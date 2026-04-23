@@ -58,24 +58,10 @@ func Attach(p AttachParams) (*AttachResult, error) {
 		return &AttachResult{Task: t, SessionName: sessionName, WasRecreated: false}, nil
 	}
 
-	// Preflight: every recorded worktree dir must exist before we
-	// ask tmux to cd into it. Upgrades raw tmux stderr into a
-	// structured WorktreeMissing the caller can pattern-match.
-	for _, r := range t.Repos {
-		wp := filepath.Join(taskDir, r.Worktree)
-		if _, err := os.Stat(wp); err != nil {
-			if os.IsNotExist(err) {
-				return nil, &errs.TaskError{
-					Code:    errs.WorktreeMissing,
-					Message: fmt.Sprintf("worktree directory missing for repo %q: %s", r.Name, wp),
-					Details: map[string]any{"repo": r.Name, "path": wp, "slug": p.Slug},
-				}
-			}
-			return nil, &errs.TaskError{
-				Code:    errs.Internal,
-				Message: fmt.Sprintf("stat worktree %s: %v", wp, err),
-			}
-		}
+	// preflightWorktrees must run before any tmux mutation. Any reordering
+	// here is a bug — see the doc comment on preflightWorktrees.
+	if err := preflightWorktrees(taskDir, p.Slug, t.Repos); err != nil {
+		return nil, err
 	}
 
 	firstPath := filepath.Join(taskDir, t.Repos[0].Worktree)
@@ -118,4 +104,31 @@ func resolveSessionName(t *Task, p AttachParams) (string, error) {
 			"hint": "ds attach --start-tmux " + p.Slug,
 		},
 	}
+}
+
+// preflightWorktrees stats every recorded worktree path under taskDir.
+// It converts a missing directory into errs.WorktreeMissing and any
+// other stat error into errs.Internal.
+//
+// MUST be called before any tmux mutation. A failure here leaves tmux
+// state untouched, which is the invariant TestAttach_worktreeMissing
+// pins from the caller side.
+func preflightWorktrees(taskDir, slug string, repos []RepoRef) error {
+	for _, r := range repos {
+		wp := filepath.Join(taskDir, r.Worktree)
+		if _, err := os.Stat(wp); err != nil {
+			if os.IsNotExist(err) {
+				return &errs.TaskError{
+					Code:    errs.WorktreeMissing,
+					Message: fmt.Sprintf("worktree directory missing for repo %q: %s", r.Name, wp),
+					Details: map[string]any{"repo": r.Name, "path": wp, "slug": slug},
+				}
+			}
+			return &errs.TaskError{
+				Code:    errs.Internal,
+				Message: fmt.Sprintf("stat worktree %s: %v", wp, err),
+			}
+		}
+	}
+	return nil
 }
