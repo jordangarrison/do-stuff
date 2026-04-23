@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go (Go 1.26 per `go.mod`), Cobra v1, `gopkg.in/yaml.v3`, `golang.org/x/term` for isatty. YAML config (spec change: was TOML). Nix `buildGoModule` for packaging; overlay refactored to share a single derivation definition.
 
-**Reference spec:** `/home/jordangarrison/dev/jordangarrison/brain/00-inbox/do-stuff - Task Tooling Spec (v0.5).md` — "Milestones > v0.1" + "Output contract" + "Data model > Configuration" + "Go project layout". **Spec deviations documented in Task 6 (YAML instead of TOML) and Task 1 (version resolver).**
+**Reference spec:** [`SPEC.md`](../../../SPEC.md) — "Milestones > v0.1" + "Output contract" + "Data model > Configuration" + "Go project layout". **Spec deviations documented in Task 6 (YAML instead of TOML) and Task 1 (version resolver).**
 
 **Out of scope (later slices):** `ds new`, `ds list`, `ds pick`, `ds attach`, `ds finish`, `skills/`, `install.sh`. See `docs/superpowers/plans/2026-04-23-v0-1-commands.md` (slice 2, TBW) and `2026-04-23-v0-1-skills.md` (slice 3, TBW).
 

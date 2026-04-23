@@ -4,6 +4,8 @@ An opinionated toolkit for spinning up and resuming multi-repo work organized as
 
 Status: v0.1 slice 1 — `ds repos` wired, Cobra foundation landed. No task creation / resume yet (that's slice 2).
 
+Full design: [`SPEC.md`](SPEC.md).
+
 ## Install
 
 ### Nix (primary)
