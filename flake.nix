@@ -58,11 +58,19 @@
               nixpkgs-fmt.enable = true;
               deadnix.enable = true;
 
-              # Slow, pre-push only
+              # Slow, pre-push only. Skip when the tree has no go.mod
+              # (e.g. branches without Go code) so the hook stays generic.
               go-test = {
                 enable = true;
                 name = "go test";
-                entry = "${pkgs.go}/bin/go test ./...";
+                entry =
+                  let
+                    script = pkgs.writeShellScript "prepush-go-test" ''
+                      [ -f go.mod ] || { echo "no go.mod, skipping go test"; exit 0; }
+                      exec ${pkgs.go}/bin/go test ./...
+                    '';
+                  in
+                  builtins.toString script;
                 language = "system";
                 pass_filenames = false;
                 stages = [ "pre-push" ];
@@ -70,7 +78,14 @@
               go-build = {
                 enable = true;
                 name = "go build";
-                entry = "${pkgs.go}/bin/go build ./...";
+                entry =
+                  let
+                    script = pkgs.writeShellScript "prepush-go-build" ''
+                      [ -f go.mod ] || { echo "no go.mod, skipping go build"; exit 0; }
+                      exec ${pkgs.go}/bin/go build ./...
+                    '';
+                  in
+                  builtins.toString script;
                 language = "system";
                 pass_filenames = false;
                 stages = [ "pre-push" ];
