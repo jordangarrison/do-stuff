@@ -31,6 +31,7 @@ func NewRootCmd(version string) *cobra.Command {
 	root.AddCommand(NewNewCmd(flags))
 	root.AddCommand(NewListCmd(flags))
 	root.AddCommand(NewAttachCmd(flags))
+	root.AddCommand(NewPickCmd(flags))
 
 	return root
 }
