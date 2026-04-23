@@ -31,7 +31,7 @@ func TestRepos_successGoldenEnvelope(t *testing.T) {
 	cfgPath := writeConfig(t, []string{root})
 
 	var stdout, stderr bytes.Buffer
-	code := runReposForTest(reposOpts{
+	code := runRepos(reposOpts{
 		ConfigPath: cfgPath,
 		Mode:       ModeJSON,
 		Stdout:     &stdout,
@@ -62,7 +62,7 @@ func TestRepos_emptyRepoRootsReturnsConfigError(t *testing.T) {
 	cfgPath := writeConfig(t, nil)
 
 	var stdout, stderr bytes.Buffer
-	code := runReposForTest(reposOpts{
+	code := runRepos(reposOpts{
 		ConfigPath: cfgPath,
 		Mode:       ModeJSON,
 		Stdout:     &stdout,

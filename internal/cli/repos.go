@@ -22,14 +22,14 @@ func NewReposCmd(flags *GlobalFlags) *cobra.Command {
 				JSON:       flags.JSON,
 				Human:      flags.Human,
 			})
-			code := runReposForTest(reposOpts{
+			code := runRepos(reposOpts{
 				ConfigPath: config.DefaultPath(),
 				Mode:       mode,
 				Stdout:     os.Stdout,
 				Stderr:     os.Stderr,
 			})
 			if code != 0 {
-				os.Exit(code)
+				return &ExitError{code: code}
 			}
 			return nil
 		},
@@ -44,9 +44,9 @@ type reposOpts struct {
 	Stderr     io.Writer
 }
 
-// runReposForTest is the testable core of `ds repos`. Returns the exit code
-// (also written via Render). Kept exported-in-test via the same package.
-func runReposForTest(o reposOpts) int {
+// runRepos is the core of ds repos. Tests call it directly to drive behavior
+// without going through cobra Execute.
+func runRepos(o reposOpts) int {
 	cfg, err := config.Load(o.ConfigPath)
 	if err != nil {
 		return Render(RenderOpts{
@@ -91,6 +91,20 @@ func runReposForTest(o reposOpts) int {
 		Mode:    o.Mode,
 	})
 }
+
+// ExitError carries a non-zero exit code from a command's RunE back to
+// main. Main checks for this type after cobra.Execute and calls os.Exit
+// with the carried code. We can't use os.Exit inside RunE because that
+// bypasses cobra's error handling and makes Execute-based tests unable
+// to observe exit codes without terminating the process.
+type ExitError struct {
+	code int
+}
+
+func (e *ExitError) Error() string { return "" }
+
+// Code returns the exit code carried by this error.
+func (e *ExitError) Code() int { return e.code }
 
 func marshalReposData(repos []discover.Repo, roots []string) map[string]any {
 	r := make([]map[string]any, 0, len(repos))
