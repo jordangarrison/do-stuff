@@ -1,0 +1,9 @@
+# do-stuff config (hand-edited)
+tasks_dir: ~/.do-stuff
+repo_roots:
+  - ~/dev/flocasts
+  - $HOME/dev/personal
+tmux_prefix: task-
+default_base: main
+default_type: feat
+start_tmux: true

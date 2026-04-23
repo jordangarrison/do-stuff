@@ -10,6 +10,30 @@
 
   outputs =
     inputs@{ flake-parts, systems, ... }:
+    let
+      # Single source of truth for the ds build. Callers pass pkgs so both
+      # perSystem outputs and downstream overlay consumers can reuse this.
+      mkDs = pkgs: pkgs.buildGoModule {
+        pname = "do-stuff";
+        version = "0.0.0";
+        src = ./.;
+        vendorHash = "sha256-AGaXI563zHI5k3Ioocqs9jkQz/AD8gnSeluDvmgFK+I=";
+        subPackages = [ "cmd/ds" ];
+        ldflags = [
+          "-s"
+          "-w"
+          "-X main.version=v0.0.0"
+        ];
+        doCheck = true;
+        meta = with pkgs.lib; {
+          description = "Task-based multi-repo worktree manager";
+          homepage = "https://github.com/jordangarrison/do-stuff";
+          license = licenses.mit;
+          mainProgram = "ds";
+          platforms = platforms.unix;
+        };
+      };
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import systems;
 
@@ -19,7 +43,13 @@
         { config, pkgs, self', ... }:
         {
           pre-commit = {
-            check.enable = true;
+            # Hooks still install locally via shellHook and run on git commit,
+            # but we skip them inside `nix flake check` because git-hooks.nix
+            # runs them in a hermetic sandbox with no network, so go vet and
+            # golangci-lint can't download modules. `checks.package` still
+            # runs `go test` + `go vet` via buildGoModule's doCheck = true,
+            # which is the CI source of truth for correctness.
+            check.enable = false;
             settings.hooks = {
               # Fast, every commit
               gofumpt = {
@@ -93,30 +123,7 @@
             };
           };
 
-          packages.default = pkgs.buildGoModule {
-            pname = "do-stuff";
-            version = "0.0.0";
-            src = ./.;
-            vendorHash = null;
-
-            subPackages = [ "cmd/ds" ];
-
-            ldflags = [
-              "-s"
-              "-w"
-              "-X main.version=v0.0.0"
-            ];
-
-            doCheck = true;
-
-            meta = with pkgs.lib; {
-              description = "Task-based multi-repo worktree manager";
-              homepage = "https://github.com/jordangarrison/do-stuff";
-              license = licenses.mit;
-              mainProgram = "ds";
-              platforms = platforms.unix;
-            };
-          };
+          packages.default = mkDs pkgs;
 
           apps.default = {
             type = "app";
@@ -155,24 +162,7 @@
 
       flake = {
         overlays.default = _final: prev: {
-          do-stuff = prev.callPackage
-            (
-              { buildGoModule }:
-              buildGoModule {
-                pname = "do-stuff";
-                version = "0.0.0";
-                src = ./.;
-                vendorHash = null;
-                subPackages = [ "cmd/ds" ];
-                ldflags = [
-                  "-s"
-                  "-w"
-                  "-X main.version=v0.0.0"
-                ];
-                meta.mainProgram = "ds";
-              }
-            )
-            { };
+          do-stuff = mkDs prev;
         };
       };
     };

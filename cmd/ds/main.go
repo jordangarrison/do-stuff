@@ -1,9 +1,15 @@
 package main
 
-import "fmt"
+import (
+	"os"
 
-var version = "v0.0.0"
+	"github.com/jordangarrison/do-stuff/internal/cli"
+)
 
 func main() {
-	fmt.Printf("ds %s\n", version)
+	root := cli.NewRootCmd(resolveVersion())
+	err := root.Execute()
+	mode := cli.DetectMode(cli.DetectOpts{IsTerminal: cli.IsStdoutTerminal()})
+	code := cli.HandleExecuteError(err, os.Stdout, os.Stderr, mode)
+	os.Exit(code)
 }
