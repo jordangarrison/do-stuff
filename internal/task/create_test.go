@@ -10,6 +10,7 @@ import (
 	"github.com/jordangarrison/do-stuff/internal/errs"
 	"github.com/jordangarrison/do-stuff/internal/task"
 	"github.com/jordangarrison/do-stuff/internal/testutil"
+	"github.com/jordangarrison/do-stuff/internal/tmux"
 )
 
 func TestCreate_createsWorktreesAndMetadata_noTmux(t *testing.T) {
@@ -215,5 +216,64 @@ func TestCreate_withTmux(t *testing.T) {
 	}
 	if res.Task.TmuxSession != "task-withtmux" {
 		t.Fatalf("session: %q", res.Task.TmuxSession)
+	}
+}
+
+func TestCreate_strictBranchConflictLeavesNoTaskDir(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+	testutil.GitRun(t, repo, "branch", "feat/conflict")
+	tasksDir := t.TempDir()
+
+	_, err := task.Create(task.CreateParams{
+		Slug:     "conflict",
+		Type:     "feat",
+		Base:     "main",
+		TasksDir: tasksDir,
+		Repos:    []task.ResolvedRepo{{Name: "api", Path: repo}},
+		NoTmux:   true,
+		Strict:   true,
+	})
+	var te *errs.TaskError
+	if !errors.As(err, &te) || te.Code != errs.BranchConflict {
+		t.Fatalf("want branch_conflict, got %+v", err)
+	}
+	// The task dir must not be left behind.
+	if _, statErr := os.Stat(filepath.Join(tasksDir, "conflict")); !os.IsNotExist(statErr) {
+		t.Fatalf("task dir leaked after branch_conflict preflight; stat err=%v", statErr)
+	}
+}
+
+func TestCreate_tmuxSessionExistsLeavesNoTaskDir(t *testing.T) {
+	if _, err := exec.LookPath("tmux"); err != nil {
+		t.Skip("tmux not on PATH")
+	}
+	t.Setenv("TMUX_TMPDIR", t.TempDir())
+
+	repo := testutil.InitFixtureRepo(t)
+	tasksDir := t.TempDir()
+	sessionName := "task-preflight"
+
+	// Pre-create the session so the tmux preflight fires.
+	if err := tmux.NewSession(sessionName, "x", t.TempDir()); err != nil {
+		t.Fatalf("NewSession preflight prep: %v", err)
+	}
+	t.Cleanup(func() { _ = tmux.KillSession(sessionName) })
+
+	_, err := task.Create(task.CreateParams{
+		Slug:       "preflight",
+		Type:       "feat",
+		Base:       "main",
+		TasksDir:   tasksDir,
+		Repos:      []task.ResolvedRepo{{Name: "api", Path: repo}},
+		StartTmux:  true,
+		TmuxPrefix: "task-",
+	})
+	var te *errs.TaskError
+	if !errors.As(err, &te) || te.Code != errs.TmuxSessionExists {
+		t.Fatalf("want tmux_session_exists, got %+v", err)
+	}
+	// No task dir, no worktrees on disk.
+	if _, statErr := os.Stat(filepath.Join(tasksDir, "preflight")); !os.IsNotExist(statErr) {
+		t.Fatalf("task dir leaked after tmux preflight; stat err=%v", statErr)
 	}
 }

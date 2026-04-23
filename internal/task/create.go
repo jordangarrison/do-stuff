@@ -88,29 +88,25 @@ func Create(p CreateParams) (*CreateResult, error) {
 		}
 	}
 
-	if err := os.MkdirAll(taskDir, 0o755); err != nil {
-		return nil, &errs.TaskError{
-			Code:    errs.Internal,
-			Message: fmt.Sprintf("mkdir %s: %v", taskDir, err),
-		}
+	// Preflight: decide AddMode for every repo without touching the filesystem.
+	// Fires BranchConflict (under --strict) before we create the task dir, so a
+	// failure here leaves nothing behind for the user to clean up.
+	type repoPlan struct {
+		mode  dsgit.AddMode
+		state string
 	}
-
-	states := make([]RepoState, 0, len(p.Repos))
-	repoRefs := make([]RepoRef, 0, len(p.Repos))
-
-	for _, repo := range p.Repos {
+	plans := make([]repoPlan, len(p.Repos))
+	for i, repo := range p.Repos {
 		mode, state, err := pickAddMode(repo.Path, branch, p.Strict)
 		if err != nil {
 			return nil, err
 		}
-		worktreePath := filepath.Join(taskDir, repo.Name)
-		if err := dsgit.WorktreeAdd(repo.Path, worktreePath, branch, p.Base, mode); err != nil {
-			return nil, err
-		}
-		states = append(states, RepoState{Name: repo.Name, WorktreePath: worktreePath, BranchState: state})
-		repoRefs = append(repoRefs, RepoRef{Name: repo.Name, Path: repo.Path, Worktree: repo.Name})
+		plans[i] = repoPlan{mode: mode, state: state}
 	}
 
+	// Preflight tmux: Available + HasSession are recoverable failures we want
+	// to catch before any filesystem mutation. NewSession / NewWindow happen
+	// post-worktrees because they need the worktree paths.
 	sessionName := ""
 	if p.StartTmux && !p.NoTmux {
 		sessionName = p.TmuxPrefix + p.Slug
@@ -128,6 +124,29 @@ func Create(p CreateParams) (*CreateResult, error) {
 				Details: map[string]any{"session": sessionName},
 			}
 		}
+	}
+
+	// State mutation begins here. Failures below this line leave partial
+	// worktrees on disk per the documented v0.1 behavior.
+	if err := os.MkdirAll(taskDir, 0o755); err != nil {
+		return nil, &errs.TaskError{
+			Code:    errs.Internal,
+			Message: fmt.Sprintf("mkdir %s: %v", taskDir, err),
+		}
+	}
+
+	states := make([]RepoState, 0, len(p.Repos))
+	repoRefs := make([]RepoRef, 0, len(p.Repos))
+	for i, repo := range p.Repos {
+		worktreePath := filepath.Join(taskDir, repo.Name)
+		if err := dsgit.WorktreeAdd(repo.Path, worktreePath, branch, p.Base, plans[i].mode); err != nil {
+			return nil, err
+		}
+		states = append(states, RepoState{Name: repo.Name, WorktreePath: worktreePath, BranchState: plans[i].state})
+		repoRefs = append(repoRefs, RepoRef{Name: repo.Name, Path: repo.Path, Worktree: repo.Name})
+	}
+
+	if sessionName != "" {
 		if err := tmux.NewSession(sessionName, p.Repos[0].Name, states[0].WorktreePath); err != nil {
 			return nil, err
 		}
