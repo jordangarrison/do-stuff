@@ -23,6 +23,21 @@ func writeConfig(t *testing.T, roots []string) string {
 	return p
 }
 
+func TestNewReposCmd_rejectsPositionalArgs(t *testing.T) {
+	cmd := NewReposCmd(&GlobalFlags{})
+	cmd.SetArgs([]string{"extra"})
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error from positional arg, got nil")
+	}
+	// Cobra's NoArgs validator returns an error like `unknown command "extra" for "repos"`
+	// or `accepts 0 arg(s), received 1`. Either shape is fine; we just need a non-nil error
+	// so HandleExecuteError can render invalid_args.
+}
+
 func TestRepos_successGoldenEnvelope(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "api", ".git"), 0o755); err != nil {

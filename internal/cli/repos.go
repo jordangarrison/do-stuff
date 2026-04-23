@@ -18,6 +18,7 @@ func NewReposCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "repos",
 		Short: "list configured repo roots and discovered repositories",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := DetectMode(DetectOpts{
 				IsTerminal: IsStdoutTerminal(),
