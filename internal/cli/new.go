@@ -62,7 +62,9 @@ func NewNewCmd(flags *GlobalFlags) *cobra.Command {
 	cmd.Flags().StringVar(&base, "base", "", "base branch to start from; defaults to config default_base")
 	cmd.Flags().BoolVar(&noTmux, "no-tmux", false, "skip tmux session creation")
 	cmd.Flags().BoolVar(&strict, "strict", false, "fail if the target branch already exists locally or on origin")
-	_ = cmd.MarkFlagRequired("repos")
+	if err := cmd.MarkFlagRequired("repos"); err != nil {
+		panic(err)
+	}
 	return cmd
 }
 
@@ -111,10 +113,6 @@ func runNew(o newOpts) int {
 	if len(o.Repos) == 0 {
 		return renderErr(o, errs.InvalidArgs, "--repos requires at least one repo", nil)
 	}
-	if o.BranchOverride != "" && strings.TrimSpace(o.BranchOverride) == "" {
-		return renderErr(o, errs.InvalidArgs, "--branch cannot be blank", nil)
-	}
-
 	if len(cfg.RepoRoots) == 0 {
 		return renderErr(o, errs.ConfigError, "repo_roots is empty; see `ds repos` for the config hint", map[string]any{"config_path": o.ConfigPath})
 	}

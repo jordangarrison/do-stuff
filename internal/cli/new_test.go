@@ -21,25 +21,10 @@ func writeConfigWithRoot(t *testing.T, tasksDir, repoRoot string) string {
 	return p
 }
 
-type newSuccessData struct {
-	Slug          string `json:"slug"`
-	Path          string `json:"path"`
-	Branch        string `json:"branch"`
-	Base          string `json:"base"`
-	Ticket        string `json:"ticket,omitempty"`
-	TmuxSession   string `json:"tmux_session,omitempty"`
-	AttachCommand string `json:"attach_command,omitempty"`
-	Repos         []struct {
-		Name         string `json:"name"`
-		WorktreePath string `json:"worktree_path"`
-		BranchState  string `json:"branch_state"`
-	} `json:"repos"`
-}
-
 type newEnvelope struct {
-	OK      bool           `json:"ok"`
-	Command string         `json:"command"`
-	Data    newSuccessData `json:"data,omitempty"`
+	OK      bool    `json:"ok"`
+	Command string  `json:"command"`
+	Data    NewData `json:"data,omitempty"`
 	Error   *struct {
 		Code string `json:"code"`
 	} `json:"error,omitempty"`
