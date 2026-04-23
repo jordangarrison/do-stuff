@@ -11,6 +11,8 @@ import (
 // BranchExistsLocal reports whether refs/heads/<branch> exists in repoPath.
 func BranchExistsLocal(repoPath, branch string) (bool, error) {
 	cmd := exec.Command("git", "-C", repoPath, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
 			return false, nil
@@ -18,7 +20,11 @@ func BranchExistsLocal(repoPath, branch string) (bool, error) {
 		return false, &errs.TaskError{
 			Code:    errs.GitError,
 			Message: fmt.Sprintf("rev-parse %s failed: %v", branch, err),
-			Details: map[string]any{"repo": repoPath, "branch": branch},
+			Details: map[string]any{
+				"repo":       repoPath,
+				"branch":     branch,
+				"git_stderr": stderr.String(),
+			},
 		}
 	}
 	return true, nil

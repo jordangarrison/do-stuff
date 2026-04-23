@@ -46,6 +46,7 @@ func TestWorktreeAdd_fetchAndTrack(t *testing.T) {
 	testutil.GitRun(t, pusher, "clone", "-q", remote, ".")
 	testutil.GitRun(t, pusher, "config", "user.email", "t@x")
 	testutil.GitRun(t, pusher, "config", "user.name", "t")
+	testutil.GitRun(t, pusher, "config", "commit.gpgsign", "false")
 	testutil.GitRun(t, pusher, "checkout", "-q", "-b", "feat/remote-only")
 	if err := os.WriteFile(filepath.Join(pusher, "f"), []byte("x\n"), 0o644); err != nil {
 		t.Fatal(err)

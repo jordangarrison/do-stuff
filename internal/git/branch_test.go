@@ -39,6 +39,7 @@ func TestFetchBranch(t *testing.T) {
 	testutil.GitRun(t, pusher, "clone", "-q", remote, ".")
 	testutil.GitRun(t, pusher, "config", "user.email", "t@x")
 	testutil.GitRun(t, pusher, "config", "user.name", "t")
+	testutil.GitRun(t, pusher, "config", "commit.gpgsign", "false")
 	testutil.GitRun(t, pusher, "checkout", "-q", "-b", "feat/x")
 	testutil.GitRun(t, pusher, "commit", "-q", "--allow-empty", "-m", "x")
 	testutil.GitRun(t, pusher, "push", "-q", "origin", "feat/x")

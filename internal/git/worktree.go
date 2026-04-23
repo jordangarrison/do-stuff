@@ -21,7 +21,8 @@ const (
 	// CheckoutExisting checks out an already-existing local branch into the worktree.
 	CheckoutExisting
 	// FetchAndTrack fetches the branch from origin and creates a local
-	// tracking branch in the new worktree.
+	// tracking branch in the new worktree. Remote is hardcoded to "origin";
+	// v0.1 does not support other remotes.
 	FetchAndTrack
 )
 
