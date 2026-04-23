@@ -48,8 +48,8 @@ func NewAttachCmd(flags *GlobalFlags) *cobra.Command {
 	return cmd
 }
 
-// ExecFunc matches the signature of syscall.Exec and is injectable for tests.
-type ExecFunc func(argv0 string, argv []string, env []string) error
+// execFunc matches the signature of syscall.Exec and is injectable for tests.
+type execFunc func(argv0 string, argv []string, env []string) error
 
 type attachOpts struct {
 	Slug       string
@@ -59,7 +59,7 @@ type attachOpts struct {
 	Stdout     io.Writer
 	Stderr     io.Writer
 	AttachFn   func(task.AttachParams) (*task.AttachResult, error)
-	ExecFn     ExecFunc
+	ExecFn     execFunc
 }
 
 // AttachData is the success payload for ds.attach.

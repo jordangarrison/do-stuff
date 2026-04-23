@@ -53,13 +53,16 @@ func TestAttach_pipedEmitsEnvelopeNoExec(t *testing.T) {
 
 	var out, errb bytes.Buffer
 	var execCalls int
+	var gotParams task.AttachParams
 	code := runAttach(attachOpts{
 		Slug:       "slug-a",
+		StartTmux:  true,
 		ConfigPath: cfg,
 		Mode:       ModeJSON,
 		Stdout:     &out,
 		Stderr:     &errb,
-		AttachFn: func(task.AttachParams) (*task.AttachResult, error) {
+		AttachFn: func(p task.AttachParams) (*task.AttachResult, error) {
+			gotParams = p
 			return &task.AttachResult{
 				Task:         &task.Task{Slug: "slug-a"},
 				SessionName:  "ds-test-slug-a",
@@ -93,6 +96,9 @@ func TestAttach_pipedEmitsEnvelopeNoExec(t *testing.T) {
 	}
 	if d.AttachCommand != "tmux attach -t ds-test-slug-a" {
 		t.Fatalf("attach_command: %q", d.AttachCommand)
+	}
+	if gotParams.Slug != "slug-a" || !gotParams.StartTmux || gotParams.TasksDir != tasksDir || gotParams.TmuxPrefix != "ds-test-" {
+		t.Fatalf("AttachParams plumbing: %+v", gotParams)
 	}
 }
 
@@ -168,6 +174,7 @@ func TestAttach_propagatesAttachError(t *testing.T) {
 		AttachFn: func(task.AttachParams) (*task.AttachResult, error) {
 			return nil, &errs.TaskError{Code: errs.TmuxSessionMissing, Message: "no session"}
 		},
+		ExecFn: func(string, []string, []string) error { t.Fatal("exec must not run on error path"); return nil },
 	})
 	if code != 6 {
 		t.Fatalf("want 6, got %d", code)
