@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -59,12 +61,20 @@ func runRepos(o reposOpts) int {
 	}
 
 	if len(cfg.RepoRoots) == 0 {
+		hint := fmt.Sprintf(
+			"mkdir -p %s && cat > %s <<'YAML'\nrepo_roots:\n  - ~/dev\nYAML",
+			filepath.Dir(o.ConfigPath),
+			o.ConfigPath,
+		)
 		return Render(RenderOpts{
 			Command: "ds.repos",
 			Err: &errs.TaskError{
 				Code:    errs.ConfigError,
-				Message: "repo_roots is empty; set it in " + o.ConfigPath,
-				Details: map[string]any{"config_path": o.ConfigPath},
+				Message: "repo_roots is empty. Seed " + o.ConfigPath + " with:\n\n" + hint,
+				Details: map[string]any{
+					"config_path": o.ConfigPath,
+					"hint":        hint,
+				},
 			},
 			Stdout: o.Stdout,
 			Stderr: o.Stderr,
