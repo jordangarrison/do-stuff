@@ -43,7 +43,13 @@
         { config, pkgs, self', ... }:
         {
           pre-commit = {
-            check.enable = true;
+            # Hooks still install locally via shellHook and run on git commit,
+            # but we skip them inside `nix flake check` because git-hooks.nix
+            # runs them in a hermetic sandbox with no network, so go vet and
+            # golangci-lint can't download modules. `checks.package` still
+            # runs `go test` + `go vet` via buildGoModule's doCheck = true,
+            # which is the CI source of truth for correctness.
+            check.enable = false;
             settings.hooks = {
               # Fast, every commit
               gofumpt = {
