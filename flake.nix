@@ -17,7 +17,7 @@
         pname = "do-stuff";
         version = "0.0.0";
         src = ./.;
-        vendorHash = "sha256-foyHNCz/8gKkOl6Dxm2UNptriPLn2aar7t5FQORZR4s=";
+        vendorHash = "sha256-IU5/ZwaAv3oyPyGDlX4795gtV8JdZM4PzKHHon96Mls=";
         subPackages = [ "cmd/ds" ];
         ldflags = [
           "-s"

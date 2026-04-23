@@ -1,0 +1,4 @@
+tasks_dir: ~/.do-stuff
+repo_roots:
+  - ~/dev
+  this is not valid yaml: [unclosed
