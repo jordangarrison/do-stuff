@@ -18,6 +18,8 @@ jobs:
           fetch-depth: 0
 
       - uses: DeterminateSystems/nix-installer-action@v21
+        with:
+          determinate: false
 
       - uses: DeterminateSystems/magic-nix-cache-action@v13
 
