@@ -42,3 +42,31 @@ func TestNewRootCmd_hasReposSubcommand(t *testing.T) {
 		t.Fatal("repos subcommand not registered")
 	}
 }
+
+func TestNewRootCmd_hasNewSubcommand(t *testing.T) {
+	cmd := NewRootCmd("v0.0.0")
+	found := false
+	for _, c := range cmd.Commands() {
+		if c.Name() == "new" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("new subcommand not registered")
+	}
+}
+
+func TestNewRootCmd_hasListSubcommand(t *testing.T) {
+	cmd := NewRootCmd("v0.0.0")
+	found := false
+	for _, c := range cmd.Commands() {
+		if c.Name() == "list" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("list subcommand not registered")
+	}
+}

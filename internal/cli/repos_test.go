@@ -56,20 +56,34 @@ func TestRepos_successGoldenEnvelope(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("want exit 0, got %d: stderr=%s", code, stderr.String())
 	}
-	var env Envelope
+
+	type envelope struct {
+		OK      bool      `json:"ok"`
+		Command string    `json:"command"`
+		Data    ReposData `json:"data"`
+	}
+	var env envelope
 	if err := json.Unmarshal(stdout.Bytes(), &env); err != nil {
 		t.Fatalf("invalid JSON: %v\n%s", err, stdout.String())
 	}
 	if !env.OK || env.Command != "ds.repos" {
 		t.Fatalf("bad envelope: %+v", env)
 	}
-	data, _ := env.Data.(map[string]any)
-	if data == nil {
-		t.Fatal("missing data")
+	if len(env.Data.Repos) != 1 {
+		t.Fatalf("want 1 repo, got %d (data=%+v)", len(env.Data.Repos), env.Data)
 	}
-	repos, _ := data["repos"].([]any)
-	if len(repos) != 1 {
-		t.Fatalf("want 1 repo, got %d (data=%+v)", len(repos), data)
+	got := env.Data.Repos[0]
+	if got.Name != "api" {
+		t.Fatalf("want name=api, got %q", got.Name)
+	}
+	if got.Root != root {
+		t.Fatalf("want root=%q, got %q", root, got.Root)
+	}
+	if got.Path != filepath.Join(root, "api") {
+		t.Fatalf("want path=%q, got %q", filepath.Join(root, "api"), got.Path)
+	}
+	if len(env.Data.Roots) != 1 || env.Data.Roots[0] != root {
+		t.Fatalf("want roots=[%q], got %+v", root, env.Data.Roots)
 	}
 }
 

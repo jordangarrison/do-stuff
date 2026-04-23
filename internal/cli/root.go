@@ -28,6 +28,8 @@ func NewRootCmd(version string) *cobra.Command {
 	root.PersistentFlags().BoolVar(&flags.Human, "human", false, "force human-readable output")
 
 	root.AddCommand(NewReposCmd(flags))
+	root.AddCommand(NewNewCmd(flags))
+	root.AddCommand(NewListCmd(flags))
 
 	return root
 }
