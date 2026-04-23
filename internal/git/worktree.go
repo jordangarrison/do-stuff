@@ -6,8 +6,10 @@ package git
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/jordangarrison/do-stuff/internal/errs"
 )
@@ -47,7 +49,19 @@ func WorktreeAdd(repoPath, worktreePath, branch, base string, mode AddMode) erro
 			Message: fmt.Sprintf("unknown AddMode %d", mode),
 		}
 	}
-	return runGit(repoPath, args...)
+	err := runGit(repoPath, args...)
+	if err == nil {
+		return nil
+	}
+	// Narrow path-collision failures to WorktreeExists so the CLI layer
+	// can surface the spec's exit 5 without pattern-matching stderr.
+	var te *errs.TaskError
+	if errors.As(err, &te) {
+		if stderr, _ := te.Details["git_stderr"].(string); strings.Contains(stderr, "already exists") {
+			te.Code = errs.WorktreeExists
+		}
+	}
+	return err
 }
 
 // runGit invokes `git -C repo <args...>`, returning a GitError on failure
