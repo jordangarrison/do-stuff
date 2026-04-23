@@ -45,6 +45,7 @@
           pre-commit = {
             check.enable = true;
             settings.hooks = {
+              # Fast, every commit
               gofumpt = {
                 enable = true;
                 name = "gofumpt";
@@ -52,6 +53,9 @@
                 language = "system";
                 types = [ "go" ];
               };
+              # golangci-lint needs `go` on PATH at run time. git-hooks.nix's built-in
+              # hook doesn't export it, so nix flake check fails in the sandbox. Force
+              # a wrapper that prepends go's bin to PATH.
               golangci-lint = {
                 enable = true;
                 pass_filenames = false;
@@ -78,6 +82,8 @@
               nixpkgs-fmt.enable = true;
               deadnix.enable = true;
 
+              # Slow, pre-push only. Skip when the tree has no go.mod
+              # (e.g. branches without Go code) so the hook stays generic.
               go-test = {
                 enable = true;
                 name = "go test";
