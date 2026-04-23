@@ -10,6 +10,30 @@
 
   outputs =
     inputs@{ flake-parts, systems, ... }:
+    let
+      # Single source of truth for the ds build. Callers pass pkgs so both
+      # perSystem outputs and downstream overlay consumers can reuse this.
+      mkDs = pkgs: pkgs.buildGoModule {
+        pname = "do-stuff";
+        version = "0.0.0";
+        src = ./.;
+        vendorHash = null; # updated in Task 4 when first dep lands
+        subPackages = [ "cmd/ds" ];
+        ldflags = [
+          "-s"
+          "-w"
+          "-X main.version=v0.0.0"
+        ];
+        doCheck = true;
+        meta = with pkgs.lib; {
+          description = "Task-based multi-repo worktree manager";
+          homepage = "https://github.com/jordangarrison/do-stuff";
+          license = licenses.mit;
+          mainProgram = "ds";
+          platforms = platforms.unix;
+        };
+      };
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import systems;
 
@@ -21,7 +45,6 @@
           pre-commit = {
             check.enable = true;
             settings.hooks = {
-              # Fast, every commit
               gofumpt = {
                 enable = true;
                 name = "gofumpt";
@@ -29,9 +52,6 @@
                 language = "system";
                 types = [ "go" ];
               };
-              # golangci-lint needs `go` on PATH at run time. git-hooks.nix's built-in
-              # hook doesn't export it, so nix flake check fails in the sandbox. Force
-              # a wrapper that prepends go's bin to PATH.
               golangci-lint = {
                 enable = true;
                 pass_filenames = false;
@@ -58,8 +78,6 @@
               nixpkgs-fmt.enable = true;
               deadnix.enable = true;
 
-              # Slow, pre-push only. Skip when the tree has no go.mod
-              # (e.g. branches without Go code) so the hook stays generic.
               go-test = {
                 enable = true;
                 name = "go test";
@@ -93,30 +111,7 @@
             };
           };
 
-          packages.default = pkgs.buildGoModule {
-            pname = "do-stuff";
-            version = "0.0.0";
-            src = ./.;
-            vendorHash = null;
-
-            subPackages = [ "cmd/ds" ];
-
-            ldflags = [
-              "-s"
-              "-w"
-              "-X main.version=v0.0.0"
-            ];
-
-            doCheck = true;
-
-            meta = with pkgs.lib; {
-              description = "Task-based multi-repo worktree manager";
-              homepage = "https://github.com/jordangarrison/do-stuff";
-              license = licenses.mit;
-              mainProgram = "ds";
-              platforms = platforms.unix;
-            };
-          };
+          packages.default = mkDs pkgs;
 
           apps.default = {
             type = "app";
@@ -155,24 +150,7 @@
 
       flake = {
         overlays.default = _final: prev: {
-          do-stuff = prev.callPackage
-            (
-              { buildGoModule }:
-              buildGoModule {
-                pname = "do-stuff";
-                version = "0.0.0";
-                src = ./.;
-                vendorHash = null;
-                subPackages = [ "cmd/ds" ];
-                ldflags = [
-                  "-s"
-                  "-w"
-                  "-X main.version=v0.0.0"
-                ];
-                meta.mainProgram = "ds";
-              }
-            )
-            { };
+          do-stuff = mkDs prev;
         };
       };
     };
