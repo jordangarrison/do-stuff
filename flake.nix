@@ -17,7 +17,7 @@
         pname = "do-stuff";
         version = "0.0.0";
         src = ./.;
-        vendorHash = null; # updated in Task 4 when first dep lands
+        vendorHash = "sha256-foyHNCz/8gKkOl6Dxm2UNptriPLn2aar7t5FQORZR4s=";
         subPackages = [ "cmd/ds" ];
         ldflags = [
           "-s"
