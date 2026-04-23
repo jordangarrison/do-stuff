@@ -225,6 +225,52 @@ func TestPick_emptyTasksDirEmitsTaskNotFound(t *testing.T) {
 	}
 }
 
+func TestPick_pipedWarnsOnUnreadableTask(t *testing.T) {
+	tasksDir := t.TempDir()
+	seedPickTask(t, tasksDir, "alpha", "", "ds-test-alpha", []string{"api"})
+
+	// Seed a broken task: directory with a malformed .task.json so task.Load fails.
+	brokenDir := filepath.Join(tasksDir, "broken")
+	if err := os.MkdirAll(brokenDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	brokenMeta := filepath.Join(brokenDir, task.MetadataFile)
+	if err := os.WriteFile(brokenMeta, []byte("["), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := writePickConfig(t, tasksDir)
+
+	var out, errb bytes.Buffer
+	code := runPick(pickOpts{
+		ConfigPath: cfg,
+		Mode:       ModeJSON,
+		Stdout:     &out, Stderr: &errb,
+		LookupFn:   func(bin string) (string, error) { return "/usr/bin/" + bin, nil },
+		SelectorFn: func(slugs []string) (string, error) { return "alpha", nil },
+		ExecFn:     func(string, []string, []string) error { return nil },
+	})
+	if code != 0 {
+		t.Fatalf("code=%d stderr=%s", code, errb.String())
+	}
+	var env Envelope
+	if err := json.Unmarshal(out.Bytes(), &env); err != nil {
+		t.Fatalf("decode: %v\n%s", err, out.String())
+	}
+	raw, _ := json.Marshal(env.Data)
+	var d PickData
+	_ = json.Unmarshal(raw, &d)
+	if d.Slug != "alpha" {
+		t.Fatalf("expected envelope for alpha, got %+v", d)
+	}
+	if !strings.Contains(errb.String(), "warn:") {
+		t.Fatalf("expected 'warn:' in stderr, got: %s", errb.String())
+	}
+	if !strings.Contains(errb.String(), brokenDir) {
+		t.Fatalf("expected broken task path %q in stderr, got: %s", brokenDir, errb.String())
+	}
+}
+
 func TestPick_selectionCancelledPiped(t *testing.T) {
 	tasksDir := t.TempDir()
 	seedPickTask(t, tasksDir, "alpha", "", "", []string{"api"})
@@ -236,7 +282,7 @@ func TestPick_selectionCancelledPiped(t *testing.T) {
 		Mode:       ModeJSON,
 		Stdout:     &out, Stderr: &errb,
 		LookupFn:   func(bin string) (string, error) { return "/usr/bin/" + bin, nil },
-		SelectorFn: func(slugs []string) (string, error) { return "", ErrPickCancelled },
+		SelectorFn: func(slugs []string) (string, error) { return "", errPickCancelled },
 	})
 	if code != 2 {
 		t.Fatalf("want 2, got %d", code)

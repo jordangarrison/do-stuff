@@ -18,15 +18,15 @@ import (
 	"github.com/jordangarrison/do-stuff/internal/tmux"
 )
 
-// ErrPickCancelled is returned by a SelectorFn when the user aborts the picker.
-var ErrPickCancelled = errors.New("pick: selection cancelled")
+// errPickCancelled is returned by a selectorFunc when the user aborts the picker.
+var errPickCancelled = errors.New("pick: selection cancelled")
 
-// SelectorFunc accepts a slice of candidate slugs and returns the chosen one.
+// selectorFunc accepts a slice of candidate slugs and returns the chosen one.
 // Implementations may render UI; the default shells out to fzf.
-type SelectorFunc func(slugs []string) (string, error)
+type selectorFunc func(slugs []string) (string, error)
 
-// LookupFunc shadows exec.LookPath for test injection.
-type LookupFunc func(bin string) (string, error)
+// lookupFunc shadows exec.LookPath for test injection.
+type lookupFunc func(bin string) (string, error)
 
 // NewPickCmd builds `ds pick` including the hidden --preview helper.
 func NewPickCmd(flags *GlobalFlags) *cobra.Command {
@@ -68,8 +68,8 @@ type pickOpts struct {
 	Mode        Mode
 	Stdout      io.Writer
 	Stderr      io.Writer
-	LookupFn    LookupFunc
-	SelectorFn  SelectorFunc
+	LookupFn    lookupFunc
+	SelectorFn  selectorFunc
 	ExecFn      execFunc
 }
 
@@ -92,7 +92,7 @@ func runPick(o pickOpts) int {
 	if o.PreviewSlug != "" {
 		return runPickPreview(o, cfg.TasksDir)
 	}
-	return runPickPrimary(o, cfg.TasksDir, cfg.TmuxPrefix)
+	return runPickPrimary(o, cfg.TasksDir)
 }
 
 func runPickPreview(o pickOpts, tasksDir string) int {
@@ -141,8 +141,14 @@ func probeSessionState(session string) string {
 	}
 }
 
-func runPickPrimary(o pickOpts, tasksDir, tmuxPrefix string) int {
-	tasks, err := loadAllTasks(tasksDir)
+func runPickPrimary(o pickOpts, tasksDir string) int {
+	var warn func(taskPath string, err error)
+	if o.Mode == ModeJSON {
+		warn = func(taskPath string, err error) {
+			_, _ = fmt.Fprintf(o.Stderr, "warn: %s: %v\n", taskPath, err)
+		}
+	}
+	tasks, err := loadAllTasks(tasksDir, warn)
 	if err != nil {
 		return Render(RenderOpts{Command: "ds.pick", Err: err, Stdout: o.Stdout, Stderr: o.Stderr, Mode: o.Mode})
 	}
@@ -187,7 +193,7 @@ func runPickPrimary(o pickOpts, tasksDir, tmuxPrefix string) int {
 	}
 	selected, err := selector(slugs)
 	if err != nil {
-		if errors.Is(err, ErrPickCancelled) {
+		if errors.Is(err, errPickCancelled) {
 			if o.Mode == ModeJSON {
 				return Render(RenderOpts{
 					Command: "ds.pick",
@@ -238,7 +244,7 @@ func runPickPrimary(o pickOpts, tasksDir, tmuxPrefix string) int {
 	return 0
 }
 
-func loadAllTasks(tasksDir string) ([]*task.Task, error) {
+func loadAllTasks(tasksDir string, warn func(taskPath string, err error)) ([]*task.Task, error) {
 	entries, err := os.ReadDir(tasksDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -261,7 +267,13 @@ func loadAllTasks(tasksDir string) ([]*task.Task, error) {
 		}
 		t, err := task.Load(taskPath)
 		if err != nil {
-			continue // skip unreadable; ds list already surfaces warnings
+			// TTY picker stays silent so fzf preview pane is not
+			// scrambled. Piped mode wires a warn closure so integrity
+			// issues reach stderr the same way `ds list` surfaces them.
+			if warn != nil {
+				warn(taskPath, err)
+			}
+			continue
 		}
 		out = append(out, t)
 	}
@@ -306,13 +318,13 @@ func defaultFzfSelector(slugs []string) (string, error) {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			// fzf exit 130 = SIGINT (Ctrl-C/Esc); 1 = no match.
 			_ = exitErr
-			return "", ErrPickCancelled
+			return "", errPickCancelled
 		}
 		return "", err
 	}
 	slug := strings.TrimSpace(string(out))
 	if slug == "" {
-		return "", ErrPickCancelled
+		return "", errPickCancelled
 	}
 	return slug, nil
 }
