@@ -1,9 +1,11 @@
 package tmux_test
 
 import (
+	"errors"
 	"os/exec"
 	"testing"
 
+	"github.com/jordangarrison/do-stuff/internal/errs"
 	"github.com/jordangarrison/do-stuff/internal/tmux"
 )
 
@@ -59,5 +61,25 @@ func TestSessionRoundTrip(t *testing.T) {
 	has, err = tmux.HasSession(name)
 	if err != nil || has {
 		t.Fatalf("post-kill: HasSession=%v err=%v", has, err)
+	}
+}
+
+func TestWrapTmuxErr_propagatesCallerCode(t *testing.T) {
+	requireTmux(t)
+
+	// Passing a bogus target to kill-session makes tmux exit non-zero.
+	// The helper must surface TmuxUnavailable here because that's what
+	// the KillSession callsite asks for; we'll flip to narrower codes
+	// at other callsites in later tasks.
+	err := tmux.KillSession("ds-test-does-not-exist-" + t.Name())
+	if err == nil {
+		t.Fatal("expected error for missing session")
+	}
+	var te *errs.TaskError
+	if !errors.As(err, &te) {
+		t.Fatalf("want TaskError, got %T", err)
+	}
+	if te.Code != errs.TmuxUnavailable {
+		t.Fatalf("want code %q, got %q", errs.TmuxUnavailable, te.Code)
 	}
 }
