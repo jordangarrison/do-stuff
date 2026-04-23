@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -12,6 +11,21 @@ import (
 	"github.com/jordangarrison/do-stuff/internal/discover"
 	"github.com/jordangarrison/do-stuff/internal/errs"
 )
+
+// ReposData is the success payload for `ds repos`. Fields carry JSON tags
+// matching the documented envelope.
+type ReposData struct {
+	Repos []RepoItem `json:"repos"`
+	Roots []string   `json:"roots"`
+}
+
+// RepoItem is one discovered repo. Root is the configured root the repo was
+// found under (useful for disambiguation when names collide across roots).
+type RepoItem struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Root string `json:"root"`
+}
 
 // NewReposCmd builds `ds repos`. Reads config, walks roots, emits envelope.
 func NewReposCmd(flags *GlobalFlags) *cobra.Command {
@@ -28,8 +42,8 @@ func NewReposCmd(flags *GlobalFlags) *cobra.Command {
 			code := runRepos(reposOpts{
 				ConfigPath: config.DefaultPath(),
 				Mode:       mode,
-				Stdout:     os.Stdout,
-				Stderr:     os.Stderr,
+				Stdout:     cmd.OutOrStdout(),
+				Stderr:     cmd.ErrOrStderr(),
 			})
 			if code != 0 {
 				return &ExitError{code: code}
@@ -47,8 +61,7 @@ type reposOpts struct {
 	Stderr     io.Writer
 }
 
-// runRepos is the core of ds repos. Tests call it directly to drive behavior
-// without going through cobra Execute.
+// runRepos is the core of ds repos. Tests call it directly.
 func runRepos(o reposOpts) int {
 	cfg, err := config.Load(o.ConfigPath)
 	if err != nil {
@@ -96,7 +109,7 @@ func runRepos(o reposOpts) int {
 
 	return Render(RenderOpts{
 		Command: "ds.repos",
-		Data:    marshalReposData(repos, cfg.RepoRoots),
+		Data:    buildReposData(repos, cfg.RepoRoots),
 		Stdout:  o.Stdout,
 		Stderr:  o.Stderr,
 		Mode:    o.Mode,
@@ -117,17 +130,14 @@ func (e *ExitError) Error() string { return "" }
 // Code returns the exit code carried by this error.
 func (e *ExitError) Code() int { return e.code }
 
-func marshalReposData(repos []discover.Repo, roots []string) map[string]any {
-	r := make([]map[string]any, 0, len(repos))
+func buildReposData(repos []discover.Repo, roots []string) ReposData {
+	items := make([]RepoItem, 0, len(repos))
 	for _, repo := range repos {
-		r = append(r, map[string]any{
-			"name": repo.Name,
-			"path": repo.Path,
-			"root": repo.Root,
+		items = append(items, RepoItem{
+			Name: repo.Name,
+			Path: repo.Path,
+			Root: repo.Root,
 		})
 	}
-	return map[string]any{
-		"repos": r,
-		"roots": roots,
-	}
+	return ReposData{Repos: items, Roots: roots}
 }
