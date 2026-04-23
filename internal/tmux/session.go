@@ -37,6 +37,10 @@ func HasSession(name string) (bool, error) {
 
 // IsSessionAttached returns true when the named session has at least one
 // client attached. Caller should have already verified existence.
+//
+// Unlike HasSession and KillSession, this uses a bare name (no "=" prefix)
+// for -t. tmux 3.6a returns empty output for display-message -t =<name>
+// when formatting #{session_attached}; the bare form works reliably.
 func IsSessionAttached(name string) (bool, error) {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("tmux", "display-message", "-p", "-t", name, "#{session_attached}")
@@ -57,7 +61,7 @@ func NewSession(name, firstWindowName, cwd string) error {
 
 // NewWindow appends a window named windowName to an existing session.
 func NewWindow(session, windowName, cwd string) error {
-	return run("new-window", "-t", session, "-n", windowName, "-c", cwd)
+	return run("new-window", "-t", "="+session, "-n", windowName, "-c", cwd)
 }
 
 // KillSession tears down the named session. No-op error suppression is
