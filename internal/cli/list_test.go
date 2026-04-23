@@ -12,6 +12,9 @@ type listEnvelope struct {
 	OK      bool     `json:"ok"`
 	Command string   `json:"command"`
 	Data    ListData `json:"data,omitempty"`
+	Error   *struct {
+		Code string `json:"code"`
+	} `json:"error,omitempty"`
 }
 
 func writeTaskFile(t *testing.T, tasksDir, slug, body string) {
@@ -164,5 +167,34 @@ func TestList_missingTasksDirIsEmpty(t *testing.T) {
 	}
 	if env.Data.Tasks == nil {
 		t.Fatal("tasks must be [] not null")
+	}
+}
+
+func TestList_tasksDirIsFile(t *testing.T) {
+	// Point tasks_dir at a regular file — ReadDir will fail with
+	// "not a directory". v0.1 list must surface this as config_error,
+	// not silently render an empty tasks list.
+	f := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfgPath := writeListConfig(t, f)
+
+	var stdout, stderr bytes.Buffer
+	code := runList(listOpts{
+		ConfigPath: cfgPath,
+		Mode:       ModeJSON,
+		Stdout:     &stdout,
+		Stderr:     &stderr,
+	})
+	if code != 8 {
+		t.Fatalf("want exit 8 (config_error), got %d stderr=%s stdout=%s", code, stderr.String(), stdout.String())
+	}
+	var env listEnvelope
+	if err := json.Unmarshal(stdout.Bytes(), &env); err != nil {
+		t.Fatalf("json: %v\n%s", err, stdout.String())
+	}
+	if env.OK {
+		t.Fatalf("expected error envelope, got %+v", env)
 	}
 }

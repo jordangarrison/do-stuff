@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/jordangarrison/do-stuff/internal/config"
+	"github.com/jordangarrison/do-stuff/internal/errs"
 	"github.com/jordangarrison/do-stuff/internal/task"
 	"github.com/jordangarrison/do-stuff/internal/tmux"
 )
@@ -72,7 +74,20 @@ func runList(o listOpts) int {
 
 	tmuxAvailable := tmux.Available() == nil
 
-	entries, _ := os.ReadDir(cfg.TasksDir) // nil on missing dir => empty list
+	entries, err := os.ReadDir(cfg.TasksDir)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return Render(RenderOpts{
+			Command: "ds.list",
+			Err: &errs.TaskError{
+				Code:    errs.ConfigError,
+				Message: fmt.Sprintf("reading tasks_dir %s: %v", cfg.TasksDir, err),
+				Details: map[string]any{"path": cfg.TasksDir},
+			},
+			Stdout: o.Stdout,
+			Stderr: o.Stderr,
+			Mode:   o.Mode,
+		})
+	}
 	tasks := make([]ListTask, 0, len(entries))
 	for _, e := range entries {
 		if !e.IsDir() {
