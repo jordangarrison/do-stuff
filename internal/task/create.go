@@ -3,7 +3,6 @@ package task
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -186,7 +185,7 @@ func pickAddMode(repoPath, branch string, strict bool) (dsgit.AddMode, string, e
 	// Skip the remote check entirely when the repo has no origin configured;
 	// BranchExistsRemote would fail with exit 128 ("origin does not appear to
 	// be a git repository") instead of a clean "not found" signal.
-	if !hasOrigin(repoPath) {
+	if !dsgit.HasOrigin(repoPath) {
 		return dsgit.CreateFromBase, "created", nil
 	}
 	hasRemote, err := dsgit.BranchExistsRemote(repoPath, "origin", branch)
@@ -204,11 +203,4 @@ func pickAddMode(repoPath, branch string, strict bool) (dsgit.AddMode, string, e
 		return dsgit.FetchAndTrack, "fetched_tracking", nil
 	}
 	return dsgit.CreateFromBase, "created", nil
-}
-
-// hasOrigin returns true when repoPath has an "origin" remote configured.
-// Uses `git config --get remote.origin.url`: exit 0 = present, non-zero = absent.
-func hasOrigin(repoPath string) bool {
-	cmd := exec.Command("git", "-C", repoPath, "config", "--get", "remote.origin.url")
-	return cmd.Run() == nil
 }

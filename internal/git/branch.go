@@ -59,3 +59,11 @@ func BranchExistsRemote(repoPath, remote, branch string) (bool, error) {
 func FetchBranch(repoPath, remote, branch string) error {
 	return runGit(repoPath, "fetch", "--quiet", "--no-tags", remote, branch)
 }
+
+// HasOrigin reports whether repoPath has an "origin" remote configured.
+// Useful to decide whether to call BranchExistsRemote; on a repo without
+// origin, that helper fails with exit 128 rather than a clean "absent".
+func HasOrigin(repoPath string) bool {
+	cmd := exec.Command("git", "-C", repoPath, "config", "--get", "remote.origin.url")
+	return cmd.Run() == nil
+}

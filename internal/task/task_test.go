@@ -1,7 +1,6 @@
 package task_test
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -47,15 +46,5 @@ func TestLoad_missingFile(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := task.Load(dir); err == nil {
 		t.Fatal("expected error for missing .task.json")
-	}
-}
-
-func TestWrite_filePath(t *testing.T) {
-	dir := t.TempDir()
-	if err := task.Write(dir, &task.Task{Slug: "x", Branch: "feat/x", Base: "main"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := filepath.Abs(filepath.Join(dir, ".task.json")); err != nil {
-		t.Fatal(err)
 	}
 }

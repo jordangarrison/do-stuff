@@ -1,6 +1,7 @@
 package task_test
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -113,7 +114,7 @@ func TestCreate_taskExists(t *testing.T) {
 		t.Fatal("expected task_exists error")
 	}
 	var te *errs.TaskError
-	if !asTaskError(err, &te) || te.Code != errs.TaskExists {
+	if !errors.As(err, &te) || te.Code != errs.TaskExists {
 		t.Fatalf("want task_exists, got %+v", err)
 	}
 }
@@ -157,7 +158,7 @@ func TestCreate_strictRejectsExistingBranch(t *testing.T) {
 		t.Fatal("expected branch_conflict")
 	}
 	var te *errs.TaskError
-	if !asTaskError(err, &te) || te.Code != errs.BranchConflict {
+	if !errors.As(err, &te) || te.Code != errs.BranchConflict {
 		t.Fatalf("want branch_conflict, got %+v", err)
 	}
 }
@@ -215,15 +216,4 @@ func TestCreate_withTmux(t *testing.T) {
 	if res.Task.TmuxSession != "task-withtmux" {
 		t.Fatalf("session: %q", res.Task.TmuxSession)
 	}
-}
-
-// asTaskError mimics errors.As without adding an import for tests that
-// already import errs directly.
-func asTaskError(err error, target **errs.TaskError) bool {
-	te, ok := err.(*errs.TaskError)
-	if !ok {
-		return false
-	}
-	*target = te
-	return true
 }
