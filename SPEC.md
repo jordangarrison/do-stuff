@@ -134,7 +134,7 @@ v0.1 omits a `schema_version` field. v0.2+ adds one when breaking an existing pa
 - `5` — worktree conflict under `--strict`
 - `6` — tmux error
 - `7` — git error (not covered above)
-- `8` — config error (malformed TOML, bad path)
+- `8` — config error (malformed YAML, bad path)
 - `9` — not found (task / branch / session specified by user)
 
 ### Error codes (stable, v0.1)
@@ -192,17 +192,20 @@ No central index. `ds list` globs `<tasks_dir>/*/.task.json`.
 ### Configuration
 
 ```
-~/.config/do-stuff/config.toml
+~/.config/do-stuff/config.yaml
 ```
 
-```toml
-tasks_dir         = "~/.do-stuff"
-repo_roots        = []              # user must set or use --roots
-tmux_prefix       = "task-"
-default_base      = "main"
-default_type      = "feat"
-start_tmux        = true
-post_create_hooks = []              # v0.2
+Honors `$XDG_CONFIG_HOME` when set.
+
+```yaml
+# Paths can use ~ or $HOME; expanded at load time.
+tasks_dir: ~/.do-stuff
+repo_roots: []              # user must set or use --roots
+tmux_prefix: task-
+default_base: main
+default_type: feat
+start_tmux: true
+post_create_hooks: []       # v0.2
 ```
 
 All settings have defaults except `repo_roots`, which the user must configure on first run. First-run UX: if `repo_roots` is empty, the CLI emits a `config_error` with clear `details` on what to set, and the skill proposes a one-liner to write the config.
@@ -245,7 +248,7 @@ internal/
     walk.go
 
   config/
-    config.go             # toml load, defaults, validation
+    config.go             # yaml load, defaults, validation
 
   errs/
     errs.go               # TaskError + codes
@@ -470,7 +473,7 @@ Natural language triggers the router skill, which dispatches to the right leaf.
 1. **`npx skills add` mechanics.** Does this tool exist already, or do we assume it does? If it doesn't, `install.sh` + a README one-liner is the fallback. The spec assumes the former; verify before release.
 2. **Binary install path under `npx skills add`.** `~/.local/bin/ds` is the safest default. Open: does the installer check PATH and warn if missing?
 3. **Disambiguation for duplicate repo names across roots.** `<root-basename>/<repo-name>` form accepted, or always require explicit namespacing? Current spec: only disambiguate when collision occurs.
-4. **First-run experience.** When `repo_roots` is empty, the CLI emits `config_error`. Should it also offer to write a starter config to `~/.config/do-stuff/config.toml` via an interactive prompt? v0.1 answer: no — users either set it manually or via the skill.
+4. **First-run experience.** When `repo_roots` is empty, the CLI emits `config_error`. Should it also offer to write a starter config to `~/.config/do-stuff/config.yaml` via an interactive prompt? v0.1 answer: no — users either set it manually or via the skill (the error message includes a copy-paste heredoc).
 
 ## Milestones
 
