@@ -31,15 +31,3 @@ func NewRootCmd(version string) *cobra.Command {
 
 	return root
 }
-
-// NewReposCmd is a placeholder until Task 8 lands the real implementation
-// in internal/cli/repos.go. The tests for this task only need to confirm the
-// subcommand is registered, not its behavior.
-func NewReposCmd(_ *GlobalFlags) *cobra.Command {
-	return &cobra.Command{
-		Use: "repos",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
