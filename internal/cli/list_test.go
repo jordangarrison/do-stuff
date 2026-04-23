@@ -11,22 +11,7 @@ import (
 type listEnvelope struct {
 	OK      bool     `json:"ok"`
 	Command string   `json:"command"`
-	Data    listData `json:"data,omitempty"`
-}
-
-type listData struct {
-	Tasks []listTask `json:"tasks"`
-}
-
-type listTask struct {
-	Slug         string   `json:"slug"`
-	Type         string   `json:"type"`
-	Ticket       string   `json:"ticket,omitempty"`
-	Branch       string   `json:"branch"`
-	Repos        []string `json:"repos"`
-	Session      string   `json:"session,omitempty"`
-	SessionState string   `json:"session_state"`
-	CreatedAt    string   `json:"created_at"`
+	Data    ListData `json:"data,omitempty"`
 }
 
 func writeTaskFile(t *testing.T, tasksDir, slug, body string) {
