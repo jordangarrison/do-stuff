@@ -127,6 +127,7 @@
 
               nixpkgs-fmt
               deadnix
+              pre-commit
 
               goreleaser
             ];
