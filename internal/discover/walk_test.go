@@ -79,18 +79,89 @@ func TestWalk_disambiguatesDuplicateNames(t *testing.T) {
 	}
 }
 
-func TestWalk_depth2Only(t *testing.T) {
+func TestWalk_depth3NotDiscovered(t *testing.T) {
 	root := t.TempDir()
-	// Depth 3 repo should NOT be discovered.
+	// Repo at depth 3 (root/level1/level2/deep-repo) must NOT be discovered.
 	deep := filepath.Join(root, "level1", "level2", "deep-repo")
 	if err := os.MkdirAll(filepath.Join(deep, ".git"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// Depth 2 repo SHOULD be discovered.
+	// Flat repo at depth 1 SHOULD be discovered.
 	makeRepo(t, root, "shallow")
 
 	repos, _ := Walk([]string{root})
 	if len(repos) != 1 || repos[0].Name != "shallow" {
 		t.Fatalf("want [shallow], got %+v", repos)
+	}
+}
+
+func TestWalk_groupedRepoDepth2(t *testing.T) {
+	root := t.TempDir()
+	// Grouped layout: <root>/<org>/<repo>.
+	orgDir := filepath.Join(root, "flocasts")
+	if err := os.MkdirAll(orgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	makeRepo(t, orgDir, "api")
+
+	repos, err := Walk([]string{root})
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if len(repos) != 1 || repos[0].Name != "api" {
+		t.Fatalf("want [api], got %+v", repos)
+	}
+	if repos[0].Path != filepath.Join(orgDir, "api") {
+		t.Fatalf("wrong path: %s", repos[0].Path)
+	}
+}
+
+func TestWalk_mixedFlatAndGrouped(t *testing.T) {
+	root := t.TempDir()
+	makeRepo(t, root, "flat")
+	orgDir := filepath.Join(root, "org")
+	if err := os.MkdirAll(orgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	makeRepo(t, orgDir, "nested")
+
+	repos, _ := Walk([]string{root})
+	if len(repos) != 2 {
+		t.Fatalf("want 2 repos, got %d (%+v)", len(repos), repos)
+	}
+	names := []string{repos[0].Name, repos[1].Name}
+	sort.Strings(names)
+	if names[0] != "flat" || names[1] != "nested" {
+		t.Fatalf("want [flat nested], got %v", names)
+	}
+}
+
+func TestWalk_collisionUsesParentDir(t *testing.T) {
+	// Two grouped repos with the same bare name in different orgs:
+	// dedup prefix should be the group name, not the root basename.
+	root := t.TempDir()
+	org1 := filepath.Join(root, "org1")
+	org2 := filepath.Join(root, "org2")
+	if err := os.MkdirAll(org1, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(org2, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	makeRepo(t, org1, "api")
+	makeRepo(t, org2, "api")
+
+	repos, _ := Walk([]string{root})
+	if len(repos) != 2 {
+		t.Fatalf("want 2 repos, got %d", len(repos))
+	}
+	names := []string{repos[0].Name, repos[1].Name}
+	sort.Strings(names)
+	// First appearance keeps plain "api"; second gets "<org>/api".
+	// Walk visits org1 before org2 (alphabetical from ReadDir), so org2/api is the deduped one.
+	expected := []string{"api", "org2/api"}
+	sort.Strings(expected)
+	if names[0] != expected[0] || names[1] != expected[1] {
+		t.Fatalf("want %v, got %v", expected, names)
 	}
 }
