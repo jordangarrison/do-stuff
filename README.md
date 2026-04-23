@@ -18,6 +18,8 @@ nix profile install github:jordangarrison/do-stuff
 go install github.com/jordangarrison/do-stuff/cmd/ds@latest
 ```
 
+Plain `go install` builds without the ldflags that Nix and GoReleaser use, so the resulting binary reports the baked-in placeholder version (`v0.0.0`) rather than the installed tag. BuildInfo-derived versioning lands in v0.1. Until then, prefer the Nix install or a tagged release archive for accurate version strings.
+
 ## Development
 
 ```
