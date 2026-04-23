@@ -2,7 +2,7 @@
 
 An opinionated toolkit for spinning up and resuming multi-repo work organized as tasks. Ships a `ds` CLI binary and a set of Claude skills that drive it.
 
-Status: bootstrap (v0.0) — no commands yet.
+Status: v0.1 slice 1 — `ds repos` wired, Cobra foundation landed. No task creation / resume yet (that's slice 2).
 
 ## Install
 
@@ -18,7 +18,23 @@ nix profile install github:jordangarrison/do-stuff
 go install github.com/jordangarrison/do-stuff/cmd/ds@latest
 ```
 
-Plain `go install` builds without the ldflags that Nix and GoReleaser use, so the resulting binary reports the baked-in placeholder version (`v0.0.0`) rather than the installed tag. BuildInfo-derived versioning lands in v0.1. Until then, prefer the Nix install or a tagged release archive for accurate version strings.
+## Configure
+
+`ds` reads YAML from `$XDG_CONFIG_HOME/do-stuff/config.yaml` (default `~/.config/do-stuff/config.yaml`):
+
+```yaml
+# Paths can use ~ or $HOME; expanded at load time.
+tasks_dir: ~/.do-stuff
+repo_roots:
+  - ~/dev/work
+  - ~/dev/personal
+tmux_prefix: task-
+default_base: main
+default_type: feat
+start_tmux: true
+```
+
+`repo_roots` is required — everything else has defaults. `ds repos` errors cleanly with `code: config_error` until it's set.
 
 ## Development
 
