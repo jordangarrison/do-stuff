@@ -1,0 +1,9 @@
+.direnv/
+.pre-commit-config.yaml
+result
+result-*
+/ds
+/dist/
+*.test
+coverage.out
+coverage.html
