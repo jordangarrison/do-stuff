@@ -101,7 +101,7 @@ Flow:
 2. Resolve session name:
    - `t.TmuxSession != ""` → use it.
    - Else `p.StartTmux` → fabricate `p.TmuxPrefix + p.Slug`, remember to persist after success.
-   - Else → `TmuxSessionMissing` with `details: {slug, hint: "pass --start-tmux to create a session for this task"}`, exit 9.
+   - Else → `TmuxSessionMissing` with `details: {slug, hint: "pass --start-tmux to create a session for this task"}`, exit 6 (slice-2a already maps `TmuxSessionMissing` into the tmux-error family at `internal/errs/errs.go`; SPEC's enum grouping supports either 6 or 9 for this code, and consistency with the existing mapping is the right tie-breaker).
 3. `tmux.Available()` — propagate `TmuxUnavailable` on miss.
 4. `tmux.HasSession(name)` — on hit, return `{Task, SessionName: name, WasRecreated: false}`.
 5. Recreate preflight: for each `t.Repos[i]`, stat `filepath.Join(taskDir, repo.Worktree)`. First miss → `WorktreeMissing` with `details: {repo, path}`, exit 5. Done before any tmux mutation.
@@ -143,7 +143,7 @@ ds attach <slug> [--start-tmux]
 |---|---|---|
 | slug fails validation | `invalid_args` | 2 |
 | `<tasks_dir>/<slug>/.task.json` missing or unreadable | `task_not_found` | 9 |
-| metadata has no `tmux_session` and `--start-tmux` not passed | `tmux_session_not_found` | 9 |
+| metadata has no `tmux_session` and `--start-tmux` not passed | `tmux_session_not_found` | 6 |
 | tmux binary missing | `tmux_unavailable` | 6 |
 | any worktree dir referenced in metadata is missing on disk | `worktree_missing` | 5 |
 | tmux op fails mid-recreate | `tmux_unavailable` (until tmux helper narrows further) | 6 |
