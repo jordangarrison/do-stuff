@@ -217,6 +217,42 @@ func TestAttach_startTmuxFabricatesAndPersists(t *testing.T) {
 	}
 }
 
+func TestAttach_startTmuxPersistsWhenSessionAlreadyAlive(t *testing.T) {
+	requireTmux(t)
+	tasksDir := t.TempDir()
+	slug := "existing"
+	expected := "ds-test-" + slug
+	taskDir := seedTaskWithWorktreeDirs(t, tasksDir, slug, "", []string{"api"})
+	t.Cleanup(func() { _ = tmux.KillSession(expected) })
+
+	// Pre-create the session that --start-tmux would fabricate.
+	if err := tmux.NewSession(expected, "api", filepath.Join(taskDir, "api")); err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+
+	res, err := task.Attach(task.AttachParams{
+		Slug: slug, TasksDir: tasksDir, TmuxPrefix: "ds-test-", StartTmux: true,
+	})
+	if err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+	if res.WasRecreated {
+		t.Fatal("expected WasRecreated=false (session already alive)")
+	}
+	if res.SessionName != expected {
+		t.Fatalf("want session %q, got %q", expected, res.SessionName)
+	}
+	// Metadata must have been persisted so future plain `ds attach`
+	// doesn't re-trigger tmux_session_not_found.
+	reloaded, err := task.Load(filepath.Join(tasksDir, slug))
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if reloaded.TmuxSession != expected {
+		t.Fatalf("want persisted session %q, got %q", expected, reloaded.TmuxSession)
+	}
+}
+
 func TestAttach_emptyReposInMetadata(t *testing.T) {
 	tasksDir := t.TempDir()
 	slug := "empty"

@@ -65,6 +65,14 @@ func Attach(p AttachParams) (*AttachResult, error) {
 		return nil, err
 	}
 	if has {
+		// Persist fabricated names here too so the next plain `ds attach`
+		// finds the session without requiring --start-tmux again.
+		if t.TmuxSession == "" {
+			t.TmuxSession = sessionName
+			if err := Write(taskDir, t); err != nil {
+				return nil, err
+			}
+		}
 		return &AttachResult{Task: t, SessionName: sessionName, WasRecreated: false}, nil
 	}
 
