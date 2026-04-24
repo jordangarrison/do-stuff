@@ -30,6 +30,8 @@ func NewRootCmd(version string) *cobra.Command {
 	root.AddCommand(NewReposCmd(flags))
 	root.AddCommand(NewNewCmd(flags))
 	root.AddCommand(NewListCmd(flags))
+	root.AddCommand(NewAttachCmd(flags))
+	root.AddCommand(NewPickCmd(flags))
 
 	return root
 }

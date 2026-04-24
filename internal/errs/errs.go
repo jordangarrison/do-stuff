@@ -17,6 +17,8 @@ const (
 	GitError           Code = "git_error"
 	ConfigError        Code = "config_error"
 	Internal           Code = "internal_error"
+	PickUnavailable    Code = "pick_unavailable"
+	WorktreeMissing    Code = "worktree_missing"
 )
 
 // TaskError is the structured failure returned by core packages and surfaced
@@ -35,13 +37,13 @@ func (e *TaskError) Error() string { return e.Message }
 // pretends to be success.
 func (e *TaskError) ExitCode() int {
 	switch e.Code {
-	case InvalidArgs:
+	case InvalidArgs, PickUnavailable:
 		return 2
 	case RepoNotFound:
 		return 3
 	case TaskExists:
 		return 4
-	case BranchConflict, WorktreeExists:
+	case BranchConflict, WorktreeExists, WorktreeMissing:
 		return 5
 	case TmuxUnavailable, TmuxSessionExists, TmuxSessionMissing:
 		return 6

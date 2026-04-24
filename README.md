@@ -2,7 +2,7 @@
 
 An opinionated toolkit for spinning up and resuming multi-repo work organized as tasks. Ships a `ds` CLI binary and a set of Claude skills that drive it.
 
-Status: v0.1 slice 2a — `ds repos`, `ds new`, `ds list` wired. `ds pick` + `ds attach` land in slice 2b.
+Status: v0.1 slice 2b — `ds repos`, `ds new`, `ds list`, `ds pick`, `ds attach` wired. `ds finish` + `ds create-interactive` land in v0.2.
 
 Full design: [`SPEC.md`](SPEC.md).
 

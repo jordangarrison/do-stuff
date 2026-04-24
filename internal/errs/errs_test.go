@@ -23,6 +23,8 @@ func TestExitCode_table(t *testing.T) {
 		{ConfigError, 8},
 		{TaskNotFound, 9},
 		{Internal, 1},
+		{PickUnavailable, 2},
+		{WorktreeMissing, 5},
 	}
 	for _, c := range cases {
 		t.Run(string(c.code), func(t *testing.T) {

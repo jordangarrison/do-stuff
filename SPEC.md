@@ -145,10 +145,12 @@ v0.1 omits a `schema_version` field. v0.2+ adds one when breaking an existing pa
 - `task_not_found`
 - `branch_conflict`
 - `worktree_exists`
+- `worktree_missing`
 - `worktree_dirty`
 - `tmux_unavailable`
 - `tmux_session_exists`
 - `tmux_session_not_found`
+- `pick_unavailable`
 - `git_error`
 - `config_error`
 - `internal_error`
@@ -266,10 +268,12 @@ const (
     TaskNotFound       Code = "task_not_found"
     BranchConflict     Code = "branch_conflict"
     WorktreeExists     Code = "worktree_exists"
+    WorktreeMissing    Code = "worktree_missing"
     WorktreeDirty      Code = "worktree_dirty"
     TmuxUnavailable    Code = "tmux_unavailable"
     TmuxSessionExists  Code = "tmux_session_exists"
     TmuxSessionMissing Code = "tmux_session_not_found"
+    PickUnavailable    Code = "pick_unavailable"
     GitError           Code = "git_error"
     ConfigError        Code = "config_error"
     Internal           Code = "internal_error"

@@ -30,7 +30,7 @@ func HasSession(name string) (bool, error) {
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
 			return false, nil
 		}
-		return false, wrapTmuxErr("has-session", err, nil)
+		return false, wrapTmuxErr(errs.TmuxUnavailable, "has-session", err, nil)
 	}
 	return true, nil
 }
@@ -47,7 +47,7 @@ func IsSessionAttached(name string) (bool, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return false, wrapTmuxErr("display-message", err, stderr.Bytes())
+		return false, wrapTmuxErr(errs.TmuxUnavailable, "display-message", err, stderr.Bytes())
 	}
 	return strings.TrimSpace(stdout.String()) != "0", nil
 }
@@ -56,34 +56,34 @@ func IsSessionAttached(name string) (bool, error) {
 // firstWindowName, cwd defaulted to the provided path. Errors if a
 // session with the same name already exists.
 func NewSession(name, firstWindowName, cwd string) error {
-	return run("new-session", "-d", "-s", name, "-n", firstWindowName, "-c", cwd)
+	return run(errs.TmuxUnavailable, "new-session", "-d", "-s", name, "-n", firstWindowName, "-c", cwd)
 }
 
 // NewWindow appends a window named windowName to an existing session.
 func NewWindow(session, windowName, cwd string) error {
-	return run("new-window", "-t", "="+session, "-n", windowName, "-c", cwd)
+	return run(errs.TmuxUnavailable, "new-window", "-t", "="+session, "-n", windowName, "-c", cwd)
 }
 
 // KillSession tears down the named session. No-op error suppression is
 // the caller's job; tmux returns exit 1 for missing sessions which we
 // surface as a TmuxError so callers can distinguish.
 func KillSession(name string) error {
-	return run("kill-session", "-t", "="+name)
+	return run(errs.TmuxUnavailable, "kill-session", "-t", "="+name)
 }
 
-func run(args ...string) error {
+func run(code errs.Code, args ...string) error {
 	cmd := exec.Command("tmux", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return wrapTmuxErr(args[0], err, stderr.Bytes())
+		return wrapTmuxErr(code, args[0], err, stderr.Bytes())
 	}
 	return nil
 }
 
-func wrapTmuxErr(op string, err error, stderr []byte) error {
+func wrapTmuxErr(code errs.Code, op string, err error, stderr []byte) error {
 	return &errs.TaskError{
-		Code:    errs.TmuxUnavailable, // caller may narrow; default is generic tmux failure
+		Code:    code,
 		Message: fmt.Sprintf("tmux %s failed: %v", op, err),
 		Details: map[string]any{
 			"op":          op,

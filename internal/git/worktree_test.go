@@ -1,10 +1,12 @@
 package git_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/jordangarrison/do-stuff/internal/errs"
 	dsgit "github.com/jordangarrison/do-stuff/internal/git"
 	"github.com/jordangarrison/do-stuff/internal/testutil"
 )
@@ -68,5 +70,32 @@ func TestWorktreeAdd_fetchAndTrack(t *testing.T) {
 	hasLocal, err = dsgit.BranchExistsLocal(work, "feat/remote-only")
 	if err != nil || !hasLocal {
 		t.Fatalf("expected local branch after FetchAndTrack, err=%v has=%v", err, hasLocal)
+	}
+}
+
+func TestWorktreeAdd_alreadyExistsMapsToWorktreeExists(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+
+	// Pre-create the target path so `git worktree add` fails with
+	// "already exists". Using a non-empty directory is the simplest
+	// way to trigger this; an empty dir also works.
+	wt := filepath.Join(t.TempDir(), "wt")
+	if err := os.MkdirAll(wt, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, "x"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := dsgit.WorktreeAdd(repo, wt, "feat/collide", "main", dsgit.CreateFromBase)
+	if err == nil {
+		t.Fatal("expected worktree add to fail with path collision")
+	}
+	var te *errs.TaskError
+	if !errors.As(err, &te) {
+		t.Fatalf("want TaskError, got %T", err)
+	}
+	if te.Code != errs.WorktreeExists {
+		t.Fatalf("want code %q, got %q (stderr=%v)", errs.WorktreeExists, te.Code, te.Details["git_stderr"])
 	}
 }
