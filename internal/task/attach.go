@@ -40,6 +40,16 @@ func Attach(p AttachParams) (*AttachResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(t.Repos) == 0 {
+		return nil, &errs.TaskError{
+			Code:    errs.Internal,
+			Message: fmt.Sprintf("task %q metadata has no repos; cannot recreate session", p.Slug),
+			Details: map[string]any{
+				"slug": p.Slug,
+				"path": filepath.Join(taskDir, MetadataFile),
+			},
+		}
+	}
 
 	sessionName, err := resolveSessionName(t, p)
 	if err != nil {

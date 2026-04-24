@@ -216,3 +216,30 @@ func TestAttach_startTmuxFabricatesAndPersists(t *testing.T) {
 		t.Fatalf("want persisted session %q, got %q", expected, reloaded.TmuxSession)
 	}
 }
+
+func TestAttach_emptyReposInMetadata(t *testing.T) {
+	tasksDir := t.TempDir()
+	slug := "empty"
+	writeTaskJSON(t, filepath.Join(tasksDir, slug), &task.Task{
+		Slug:      slug,
+		Type:      "feat",
+		Branch:    "feat/" + slug,
+		Base:      "main",
+		Repos:     nil, // corrupted metadata
+		CreatedAt: time.Now().UTC(),
+	})
+
+	_, err := task.Attach(task.AttachParams{
+		Slug: slug, TasksDir: tasksDir, TmuxPrefix: "ds-test-",
+	})
+	if err == nil {
+		t.Fatal("expected Internal error, got nil (likely panicked)")
+	}
+	var te *errs.TaskError
+	if !errors.As(err, &te) {
+		t.Fatalf("want TaskError, got %T", err)
+	}
+	if te.Code != errs.Internal {
+		t.Fatalf("want Internal, got %s", te.Code)
+	}
+}
