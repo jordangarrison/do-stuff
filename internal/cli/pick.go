@@ -128,7 +128,7 @@ func runPickPrimary(o pickOpts, tasksDir string) int {
 			_, _ = fmt.Fprintf(o.Stderr, "warn: %s: %v\n", taskPath, err)
 		}
 	}
-	tasks, err := loadAllTasks(tasksDir, warn)
+	tasks, err := scanTasks(tasksDir, warn)
 	if err != nil {
 		return Render(RenderOpts{Command: "ds.pick", Err: err, Stdout: o.Stdout, Stderr: o.Stderr, Mode: o.Mode})
 	}
@@ -234,42 +234,6 @@ func runPickPrimary(o pickOpts, tasksDir string) int {
 		})
 	}
 	return 0
-}
-
-func loadAllTasks(tasksDir string, warn func(taskPath string, err error)) ([]*task.Task, error) {
-	entries, err := os.ReadDir(tasksDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, &errs.TaskError{
-			Code:    errs.ConfigError,
-			Message: fmt.Sprintf("reading tasks_dir %s: %v", tasksDir, err),
-			Details: map[string]any{"path": tasksDir},
-		}
-	}
-	out := make([]*task.Task, 0, len(entries))
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		taskPath := filepath.Join(tasksDir, e.Name())
-		if _, err := os.Stat(filepath.Join(taskPath, task.MetadataFile)); err != nil {
-			continue
-		}
-		t, err := task.Load(taskPath)
-		if err != nil {
-			// TTY picker stays silent so fzf preview pane is not
-			// scrambled. Piped mode wires a warn closure so integrity
-			// issues reach stderr the same way `ds list` surfaces them.
-			if warn != nil {
-				warn(taskPath, err)
-			}
-			continue
-		}
-		out = append(out, t)
-	}
-	return out, nil
 }
 
 func buildPickData(t *task.Task) PickData {
