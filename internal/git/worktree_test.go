@@ -73,6 +73,89 @@ func TestWorktreeAdd_fetchAndTrack(t *testing.T) {
 	}
 }
 
+func TestWorktreeDirty_cleanFalse(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+	wt := filepath.Join(t.TempDir(), "wt")
+	if err := dsgit.WorktreeAdd(repo, wt, "feat/clean", "main", dsgit.CreateFromBase); err != nil {
+		t.Fatalf("WorktreeAdd: %v", err)
+	}
+	dirty, err := dsgit.WorktreeDirty(wt)
+	if err != nil {
+		t.Fatalf("WorktreeDirty: %v", err)
+	}
+	if dirty {
+		t.Fatal("expected clean worktree, got dirty")
+	}
+}
+
+func TestWorktreeDirty_dirtyTrue(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+	wt := filepath.Join(t.TempDir(), "wt")
+	if err := dsgit.WorktreeAdd(repo, wt, "feat/dirty", "main", dsgit.CreateFromBase); err != nil {
+		t.Fatalf("WorktreeAdd: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, "new.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dirty, err := dsgit.WorktreeDirty(wt)
+	if err != nil {
+		t.Fatalf("WorktreeDirty: %v", err)
+	}
+	if !dirty {
+		t.Fatal("expected dirty worktree, got clean")
+	}
+}
+
+func TestWorktreeRemove_clean(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+	wt := filepath.Join(t.TempDir(), "wt")
+	if err := dsgit.WorktreeAdd(repo, wt, "feat/rm-clean", "main", dsgit.CreateFromBase); err != nil {
+		t.Fatalf("WorktreeAdd: %v", err)
+	}
+	if err := dsgit.WorktreeRemove(repo, wt, false); err != nil {
+		t.Fatalf("WorktreeRemove: %v", err)
+	}
+	if _, err := os.Stat(wt); !os.IsNotExist(err) {
+		t.Fatalf("worktree dir still present: %v", err)
+	}
+}
+
+func TestWorktreeRemove_dirtyUnforced(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+	wt := filepath.Join(t.TempDir(), "wt")
+	if err := dsgit.WorktreeAdd(repo, wt, "feat/rm-dirty", "main", dsgit.CreateFromBase); err != nil {
+		t.Fatalf("WorktreeAdd: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, "dirt.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := dsgit.WorktreeRemove(repo, wt, false)
+	if err == nil {
+		t.Fatal("expected error removing dirty worktree without force")
+	}
+	var te *errs.TaskError
+	if !errors.As(err, &te) || te.Code != errs.GitError {
+		t.Fatalf("want GitError, got %v", err)
+	}
+}
+
+func TestWorktreeRemove_dirtyForced(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+	wt := filepath.Join(t.TempDir(), "wt")
+	if err := dsgit.WorktreeAdd(repo, wt, "feat/rm-force", "main", dsgit.CreateFromBase); err != nil {
+		t.Fatalf("WorktreeAdd: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, "dirt.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := dsgit.WorktreeRemove(repo, wt, true); err != nil {
+		t.Fatalf("WorktreeRemove force: %v", err)
+	}
+	if _, err := os.Stat(wt); !os.IsNotExist(err) {
+		t.Fatalf("worktree dir still present: %v", err)
+	}
+}
+
 func TestWorktreeAdd_alreadyExistsMapsToWorktreeExists(t *testing.T) {
 	repo := testutil.InitFixtureRepo(t)
 

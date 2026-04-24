@@ -64,6 +64,37 @@ func WorktreeAdd(repoPath, worktreePath, branch, base string, mode AddMode) erro
 	return err
 }
 
+// WorktreeDirty reports whether worktreePath has uncommitted changes.
+// Implementation: `git -C worktreePath status --porcelain`; non-empty stdout = dirty.
+func WorktreeDirty(worktreePath string) (bool, error) {
+	cmd := exec.Command("git", "-C", worktreePath, "status", "--porcelain")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return false, &errs.TaskError{
+			Code:    errs.GitError,
+			Message: fmt.Sprintf("git status failed in %s: %v", worktreePath, err),
+			Details: map[string]any{
+				"worktree":   worktreePath,
+				"git_stderr": stderr.String(),
+			},
+		}
+	}
+	return stdout.Len() > 0, nil
+}
+
+// WorktreeRemove shells out `git -C repoPath worktree remove [--force] worktreePath`.
+// force=true maps to --force (required when the worktree has local changes or is locked).
+func WorktreeRemove(repoPath, worktreePath string, force bool) error {
+	args := []string{"worktree", "remove"}
+	if force {
+		args = append(args, "--force")
+	}
+	args = append(args, worktreePath)
+	return runGit(repoPath, args...)
+}
+
 // runGit invokes `git -C repo <args...>`, returning a GitError on failure
 // with stderr attached to Details.
 func runGit(repoPath string, args ...string) error {
