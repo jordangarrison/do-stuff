@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/jordangarrison/do-stuff/internal/errs"
 )
@@ -58,6 +59,35 @@ func BranchExistsRemote(repoPath, remote, branch string) (bool, error) {
 // FetchBranch runs `git fetch <remote> <branch>` scoped to a single ref.
 func FetchBranch(repoPath, remote, branch string) error {
 	return runGit(repoPath, "fetch", "--quiet", "--no-tags", remote, branch)
+}
+
+// BranchDelete shells out `git -C repoPath branch -d|-D branch`.
+// force=true maps to -D (delete unmerged branches). Missing-branch stderr
+// is swallowed (returns nil) so callers can re-run idempotently.
+func BranchDelete(repoPath, branch string, force bool) error {
+	flag := "-d"
+	if force {
+		flag = "-D"
+	}
+	cmd := exec.Command("git", "-C", repoPath, "branch", flag, branch)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		s := stderr.String()
+		if strings.Contains(s, "not found") {
+			return nil
+		}
+		return &errs.TaskError{
+			Code:    errs.GitError,
+			Message: fmt.Sprintf("git branch %s %s failed: %v", flag, branch, err),
+			Details: map[string]any{
+				"repo":       repoPath,
+				"branch":     branch,
+				"git_stderr": s,
+			},
+		}
+	}
+	return nil
 }
 
 // HasOrigin reports whether repoPath has an "origin" remote configured.

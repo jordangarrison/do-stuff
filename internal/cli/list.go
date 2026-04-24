@@ -1,18 +1,13 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/jordangarrison/do-stuff/internal/config"
-	"github.com/jordangarrison/do-stuff/internal/errs"
 	"github.com/jordangarrison/do-stuff/internal/task"
-	"github.com/jordangarrison/do-stuff/internal/tmux"
 )
 
 // NewListCmd builds `ds list`.
@@ -72,37 +67,22 @@ func runList(o listOpts) int {
 		return Render(RenderOpts{Command: "ds.list", Err: err, Stdout: o.Stdout, Stderr: o.Stderr, Mode: o.Mode})
 	}
 
-	tmuxAvailable := tmux.Available() == nil
-
-	entries, err := os.ReadDir(cfg.TasksDir)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	warn := func(taskPath string, err error) {
+		_, _ = fmt.Fprintf(o.Stderr, "warn: %s: %v\n", taskPath, err)
+	}
+	loaded, err := scanTasks(cfg.TasksDir, warn)
+	if err != nil {
 		return Render(RenderOpts{
 			Command: "ds.list",
-			Err: &errs.TaskError{
-				Code:    errs.ConfigError,
-				Message: fmt.Sprintf("reading tasks_dir %s: %v", cfg.TasksDir, err),
-				Details: map[string]any{"path": cfg.TasksDir},
-			},
-			Stdout: o.Stdout,
-			Stderr: o.Stderr,
-			Mode:   o.Mode,
+			Err:     err,
+			Stdout:  o.Stdout,
+			Stderr:  o.Stderr,
+			Mode:    o.Mode,
 		})
 	}
-	tasks := make([]ListTask, 0, len(entries))
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		taskPath := filepath.Join(cfg.TasksDir, e.Name())
-		if _, err := os.Stat(filepath.Join(taskPath, task.MetadataFile)); err != nil {
-			continue
-		}
-		t, err := task.Load(taskPath)
-		if err != nil {
-			_, _ = fmt.Fprintf(o.Stderr, "warn: %s: %v\n", taskPath, err)
-			continue
-		}
-		tasks = append(tasks, buildListTask(t, tmuxAvailable))
+	tasks := make([]ListTask, 0, len(loaded))
+	for _, t := range loaded {
+		tasks = append(tasks, buildListTask(t))
 	}
 
 	return Render(RenderOpts{
@@ -114,25 +94,14 @@ func runList(o listOpts) int {
 	})
 }
 
-func buildListTask(t *task.Task, tmuxAvailable bool) ListTask {
+func buildListTask(t *task.Task) ListTask {
 	names := make([]string, 0, len(t.Repos))
 	for _, r := range t.Repos {
 		names = append(names, r.Name)
 	}
 	state := "absent"
-	if tmuxAvailable && t.TmuxSession != "" {
-		has, err := tmux.HasSession(t.TmuxSession)
-		if err == nil && has {
-			attached, err := tmux.IsSessionAttached(t.TmuxSession)
-			switch {
-			case err != nil:
-				state = "detached"
-			case attached:
-				state = "attached"
-			default:
-				state = "detached"
-			}
-		}
+	if t.TmuxSession != "" {
+		state = probeSessionState(t.TmuxSession)
 	}
 	return ListTask{
 		Slug:         t.Slug,
