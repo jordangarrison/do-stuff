@@ -156,6 +156,15 @@ func TestWorktreeRemove_dirtyForced(t *testing.T) {
 	}
 }
 
+func TestWorktreeRemove_missingAndUnregistered(t *testing.T) {
+	repo := testutil.InitFixtureRepo(t)
+	// Path that was never a worktree of this repo and doesn't exist.
+	ghost := filepath.Join(t.TempDir(), "ghost")
+	if err := dsgit.WorktreeRemove(repo, ghost, true); err != nil {
+		t.Fatalf("WorktreeRemove on missing+unregistered path must be nil, got %v", err)
+	}
+}
+
 func TestWorktreeAdd_alreadyExistsMapsToWorktreeExists(t *testing.T) {
 	repo := testutil.InitFixtureRepo(t)
 

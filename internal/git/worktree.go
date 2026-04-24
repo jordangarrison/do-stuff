@@ -86,13 +86,33 @@ func WorktreeDirty(worktreePath string) (bool, error) {
 
 // WorktreeRemove shells out `git -C repoPath worktree remove [--force] worktreePath`.
 // force=true maps to --force (required when the worktree has local changes or is locked).
+// "is not a working tree" stderr is swallowed (returns nil) so callers can re-run
+// idempotently after a partial failure left the worktree gone and unregistered.
 func WorktreeRemove(repoPath, worktreePath string, force bool) error {
-	args := []string{"worktree", "remove"}
+	args := []string{"-C", repoPath, "worktree", "remove"}
 	if force {
 		args = append(args, "--force")
 	}
 	args = append(args, worktreePath)
-	return runGit(repoPath, args...)
+	cmd := exec.Command("git", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		s := stderr.String()
+		if strings.Contains(s, "is not a working tree") {
+			return nil
+		}
+		return &errs.TaskError{
+			Code:    errs.GitError,
+			Message: fmt.Sprintf("git worktree remove %s failed: %v", worktreePath, err),
+			Details: map[string]any{
+				"repo":       repoPath,
+				"worktree":   worktreePath,
+				"git_stderr": s,
+			},
+		}
+	}
+	return nil
 }
 
 // runGit invokes `git -C repo <args...>`, returning a GitError on failure
