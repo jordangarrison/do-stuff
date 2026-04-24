@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"regexp"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -70,10 +69,8 @@ type AttachData struct {
 	AttachCommand string `json:"attach_command"`
 }
 
-var attachSlugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
-
 func runAttach(o attachOpts) int {
-	if !attachSlugRe.MatchString(o.Slug) {
+	if !taskSlugRe.MatchString(o.Slug) {
 		return Render(RenderOpts{
 			Command: "ds.attach",
 			Err: &errs.TaskError{

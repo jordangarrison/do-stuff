@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -83,10 +82,7 @@ type newOpts struct {
 	Stderr         io.Writer
 }
 
-var (
-	slugRe     = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
-	validTypes = map[string]struct{}{"feat": {}, "fix": {}, "chore": {}, "refactor": {}, "docs": {}, "test": {}, "perf": {}, "build": {}, "ci": {}}
-)
+var validTypes = map[string]struct{}{"feat": {}, "fix": {}, "chore": {}, "refactor": {}, "docs": {}, "test": {}, "perf": {}, "build": {}, "ci": {}}
 
 func runNew(o newOpts) int {
 	cfg, err := config.Load(o.ConfigPath)
@@ -104,7 +100,7 @@ func runNew(o newOpts) int {
 		base = cfg.DefaultBase
 	}
 
-	if !slugRe.MatchString(o.Slug) {
+	if !taskSlugRe.MatchString(o.Slug) {
 		return renderErr(o, errs.InvalidArgs, "slug must match ^[a-z0-9][a-z0-9._-]*$", map[string]any{"slug": o.Slug})
 	}
 	if _, ok := validTypes[typ]; !ok {
