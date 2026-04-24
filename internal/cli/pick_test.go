@@ -131,10 +131,8 @@ func TestPick_ttyExecsDsAttach(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("code=%d stderr=%s", code, errb.String())
 	}
-	if !strings.HasSuffix(gotArgv0, "ds") && !strings.HasSuffix(gotArgv0, "ds.test") {
-		// Argv0 is os.Args[0]; in go test it's the test binary.
-		// We only assert the tail here.
-		_ = gotArgv0
+	if !filepath.IsAbs(gotArgv0) {
+		t.Fatalf("expected absolute argv0 so execve can find the binary, got %q", gotArgv0)
 	}
 	if len(gotArgv) < 3 || gotArgv[len(gotArgv)-2] != "attach" || gotArgv[len(gotArgv)-1] != "alpha" {
 		t.Fatalf("argv tail expected [.. attach alpha], got %v", gotArgv)

@@ -229,7 +229,19 @@ func runPickPrimary(o pickOpts, tasksDir string) int {
 
 	// TTY path: delegate to `ds attach <slug>` via exec. Preserves
 	// session-recreate behavior without duplicating it here.
-	argv0 := os.Args[0]
+	// os.Executable resolves PATH/symlinks so syscall.Exec gets an
+	// absolute binary path (execve does not search PATH).
+	argv0, err := os.Executable()
+	if err != nil {
+		return Render(RenderOpts{
+			Command: "ds.pick",
+			Err: &errs.TaskError{
+				Code:    errs.Internal,
+				Message: fmt.Sprintf("resolving current executable: %v", err),
+			},
+			Stdout: o.Stdout, Stderr: o.Stderr, Mode: o.Mode,
+		})
+	}
 	argv := []string{argv0, "attach", selected}
 	if err := o.ExecFn(argv0, argv, os.Environ()); err != nil {
 		return Render(RenderOpts{
@@ -301,7 +313,10 @@ func buildPickData(t *task.Task) PickData {
 }
 
 func defaultFzfSelector(slugs []string) (string, error) {
-	argv0 := os.Args[0]
+	argv0, err := os.Executable()
+	if err != nil {
+		argv0 = os.Args[0]
+	}
 	preview := fmt.Sprintf(`%s pick --preview {}`, argv0)
 	cmd := exec.Command("fzf",
 		"--height=40%",
