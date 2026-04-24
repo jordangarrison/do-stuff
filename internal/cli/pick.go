@@ -15,7 +15,6 @@ import (
 	"github.com/jordangarrison/do-stuff/internal/config"
 	"github.com/jordangarrison/do-stuff/internal/errs"
 	"github.com/jordangarrison/do-stuff/internal/task"
-	"github.com/jordangarrison/do-stuff/internal/tmux"
 )
 
 // errPickCancelled is returned by a selectorFunc when the user aborts the picker.
@@ -120,25 +119,6 @@ func runPickPreview(o pickOpts, tasksDir string) int {
 		_, _ = fmt.Fprintf(o.Stdout, "session: %s (%s)\n", t.TmuxSession, state)
 	}
 	return 0
-}
-
-func probeSessionState(session string) string {
-	if err := tmux.Available(); err != nil {
-		return "absent"
-	}
-	has, err := tmux.HasSession(session)
-	if err != nil || !has {
-		return "absent"
-	}
-	attached, err := tmux.IsSessionAttached(session)
-	switch {
-	case err != nil:
-		return "detached"
-	case attached:
-		return "attached"
-	default:
-		return "detached"
-	}
 }
 
 func runPickPrimary(o pickOpts, tasksDir string) int {
